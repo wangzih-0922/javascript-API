@@ -1,6 +1,6 @@
 //綁定DOM
 const productList = document.querySelector(".productWrap")
-const cartList = document.querySelector(".shoppingCart-tbody")
+const cartList = document.querySelector(".shoppingCart-tbody"
 
 let productData;
 let cartData;
