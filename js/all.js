@@ -1,9 +1,9 @@
 //綁定DOM
 const productList = document.querySelector(".productWrap")
 const cartList = document.querySelector(".shoppingCart-tbody"
-
 let productData;
 let cartData;
+                                        
 //資料初始化
 function init() {
   getProductList();
@@ -94,8 +94,7 @@ function renderCartList(data) {
 };
 
 
-//加入購物車(連接API)
-
+//加入購物車及產品數量邏輯
 productList.addEventListener("click", function (e) {
   e.preventDefault();
   let addCardBtn = document.querySelector(".addCardBtn")
@@ -119,7 +118,7 @@ productList.addEventListener("click", function (e) {
 
 });
 
-//加入購物車
+//加入購物車(連接API)
 function addCartItem(productId, productTitle) {
   axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${api_path}/carts`, {
     data: {
@@ -136,7 +135,7 @@ function addCartItem(productId, productTitle) {
     })
 };
 
-//增加商品數量
+//增加商品數量(連接API)
 function addProductNum(cardId, productQuantity, productTitle) {
   axios.patch(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${api_path}/carts`, {
     "data": {
