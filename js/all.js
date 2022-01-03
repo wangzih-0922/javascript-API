@@ -1,16 +1,9 @@
 //綁定DOM
 const productList = document.querySelector(".productWrap")
-<<<<<<< HEAD
 const cartList = document.querySelector(".shoppingCart-tbody")
 let productData;
 let cartData;
 
-=======
-const cartList = document.querySelector(".shoppingCart-tbody"
-let productData;
-let cartData;
-                                        
->>>>>>> 4209c59cfd469df8e2385ee82f18ee49580a5e66
 //資料初始化
 function init() {
   getProductList();
