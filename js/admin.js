@@ -1,116 +1,138 @@
-
 //DOM
-const pieChart = document.querySelector("#chart");
 const orderList = document.querySelector(".js-orderList");
-
+let orderData;
 //資料初始化
-function init(){
-    getOrderList();
+function init() {
+  getOrderList();
 };
 init();
-let orderData;
+
 //抓取訂單資料(連接API)
 function getOrderList() {
-    axios.get(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
-      {
-        headers: {
-          'Authorization': token
-        }
-      })
-      .then(function (response) {
-        orderData = response.data.orders;
-        renderOrderList();
-        renderC3Data();
-      })
-  };
-
-//顯示訂單列表
-function renderOrderList(){
-    let str = "";
-    orderData.forEach(function(item){
-        //組訂單品項字串
-        let orderTitle = "";
-        item.products.forEach(function(productItem){
-            orderTitle += `<p>${productItem.title}X${productItem.quantity}</p>`
-        });
-
-        //組訂單日期
-        let timeStamp = new Date(item.updatedAt*1000);
-        let orderDate = `${timeStamp.getFullYear()}/${timeStamp.getMonth()+1}/${timeStamp.getDate()}`
-
-        //組訂單狀態字串
-        let paidStatus = "";
-        if(item.paid == false){
-            paidStatus = "未處理";
-        }else{
-            paidStatus = "已處理";
-        }
-        //組orderList字串
-        str +=`<tr>
-        <td>${item.id}</td>
-        <td>
-          <p>${item.user.name}</p>
-          <p>${item.user.tel}</p>
-        </td>
-        <td>${item.user.address}</td>
-        <td>${item.user.email}</td>
-        <td>
-          ${orderTitle}
-        </td>
-        <td>${orderDate}</td>
-        <td class="orderStatus">
-          <a href="#" class="js-orderStatus" data-id="${item.id}" data-status="${item.paid}">${paidStatus}</a>
-        </td>
-        <td>
-          <input type="button" class="delSingleOrder-Btn" value="刪除" data-id="${item.id}">
-        </td>
-    </tr>`
-    });
-    orderList.innerHTML = str;
-};
-//清除全部訂單資料(連接API)
-const deleteAllBtn = document.querySelector(".discardAllBtn");
-deleteAllBtn.addEventListener("click",function(e){
-    e.preventDefault();
-    axios.delete(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
+  axios.get(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
     {
       headers: {
         'Authorization': token
       }
     })
     .then(function (response) {
-      alert("已成功清除所有訂單");
-      getOrderList();
+      orderData = response.data.orders;
+      renderOrderData(orderData);
+      renderCategoryChart(orderData);
+      renderAllItemChart(orderData);
+    })
+}
+
+//渲染訂單列表
+function renderOrderData(data) {
+  let str = "";
+
+  data.forEach(function (item) {
+    //訂單日期
+    let orderDate = new Date(item.createdAt * 1000).toLocaleDateString();
+    //組訂單品項字串
+    let productStr = "";
+    item.products.forEach(function (productItem) {
+      productStr += `<p>${productItem.title} x ${productItem.quantity}</p>`
+    });
+    //訂單狀態字串
+    let orderStatus = "";
+    if (item.paid === false) {
+      orderStatus = "未處理"
+    } else {
+      orderStatus = "已處理"
+    }
+
+    str += `<tr>
+  <td>${item.id}</td>
+  <td>
+    <p>${item.user.name}</p>
+    <p>${item.user.tel}</p>
+  </td>
+  <td>${item.user.address}</td>
+  <td>${item.user.email}</td>
+  <td>
+    ${productStr}
+  </td>
+  <td>${orderDate}</td>
+  <td class="orderStatus">
+    <a href="#" class="js-orderStatus" data-id="${item.id}" data-paid="${item.paid}">${orderStatus}</a>
+  </td>
+  <td>
+    <input type="button" class="delSingleOrder-Btn" value="刪除" data-id="${item.id}">
+  </td>
+</tr>`
+  });
+  orderList.innerHTML = str;
+};
+
+//清除全部訂單資料(連接API)
+const discardAllBtn = document.querySelector(".discardAllBtn")
+discardAllBtn.addEventListener("click", function (e) {
+  axios.delete(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
+    {
+      headers: {
+        'Authorization': token
+      }
+    })
+    .then(function (response) {
+      console.log();
+      orderData = response.data.orders;
+      renderOrderData(orderData);
+      swal("訂單已全部刪除成功");
+      renderCategoryChart(orderData);
+      renderAllItemChart(orderData);
     })
 });
 
-//修改訂單狀態
-orderList.addEventListener("click",function(e){
-    let orderId = e.target.getAttribute("data-id");
-    let orderStatus = e.target.getAttribute("data-status");
-    e.preventDefault();
-    if(e.target.getAttribute("class") == "js-orderStatus"){
-        let newStatus = ""
-        if(orderStatus == "false"){
-        newStatus = true;
-        }else{
-        newStatus = false;
-        };
-        orderStatusChange(orderId,newStatus);
-        return;
+
+
+
+//清除特定訂單及更改訂單狀態邏輯
+orderList.addEventListener("click", function (e) {
+  e.preventDefault();
+  let orderId = e.target.getAttribute("data-id")
+  if (e.target.getAttribute("class") === "delSingleOrder-Btn") {
+    deleteOrderItem(orderId);
+  }
+  if (e.target.getAttribute("class") === "js-orderStatus") {
+    let paidStatus;
+    if (e.target.getAttribute("data-paid") == "true") {
+      paidStatus = false;
+    } else {
+      paidStatus = true;
     }
-    if(e.target.getAttribute("class") == "delSingleOrder-Btn"){
-        deleteOrder(orderId)
-        return;
-    }
+    editOrderList(orderId, paidStatus);
+  }
+
+
 });
 
-function orderStatusChange(orderId,newStatus){
-    axios.put(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
+//清除特定訂單資料(連接API)
+function deleteOrderItem(orderId) {
+  axios.delete(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders/${orderId}`,
+    {
+      headers: {
+        'Authorization': token
+      }
+    })
+    .then(function (response) {
+      console.log(response.data);
+      orderData = response.data.orders;
+      renderOrderData(orderData);
+      swal("此訂單已刪除成功");
+      renderCategoryChart(orderData);
+      renderAllItemChart(orderData);
+    })
+};
+
+//修改訂單狀態
+function editOrderList(orderId, paidStatus) {
+  axios.put(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders`,
     {
       "data": {
         "id": orderId,
-        "paid": newStatus
+        "paid": paidStatus
       }
     },
     {
@@ -119,71 +141,89 @@ function orderStatusChange(orderId,newStatus){
       }
     })
     .then(function (response) {
-      getOrderList();
+      console.log(response.data);
+      orderData = response.data.orders;
+      renderOrderData(orderData);
+      swal("訂單狀態修改成功");
     })
-};
+}
 
-//清除特定訂單資料(連接API)
-function deleteOrder(orderId){
-    axios.delete(`https://livejs-api.hexschool.io/api/livejs/v1/admin/${api_path}/orders/${orderId}`,
-    {
-      headers: {
-        'Authorization': token
-      }
-    })
-    .then(function (response) {
-      alert("此訂單已成功刪除");
-      getOrderList();
-    })
-};
 
-//顯示圖表LV2
+//圖表:全產品類別營收比重
 //篩選資料類別 做出資料關聯
-function renderC3Data(){
-    let obj ={};
-    orderData.forEach(function(item){
-        item.products.forEach(function(productItem){
-            if(obj[productItem.title] == undefined){
-                obj[productItem.title] = productItem.price * productItem.quantity;
-            }else{
-                obj[productItem.title] += productItem.price* productItem.quantity;
-            }
-        })
+function renderCategoryChart(orderData) {
+  let obj = {}
+  orderData.forEach(function (item) {
+    item.products.forEach(function (productItem) {
+      if (obj[productItem.category] === undefined) {
+        obj[productItem.category] = item.total;
+      } else {
+        obj[productItem.category] += item.total;
+      }
     });
-    let titleAry = Object.keys(obj);
-    let pieChartData = [];
-    titleAry.forEach(function(item){
-        let ary = [];
-        ary.push(item);
-        ary.push(obj[item]);
-        pieChartData.push(ary);
-    });
-    pieChartData.sort(function(a,b){
-        return b[1]-a[1];
-    });
-    if(pieChartData.length >4){
-        let totalOther = ["其他"];
-         let totalPrice = 0;
-         pieChartData.forEach(function(item,index){
-             if(index>2){
-                totalPrice += item[1];
-             }
-            
-           });
-        totalOther.push(totalPrice);
-        pieChartData.splice(3,pieChartData.length-1);
-        pieChartData.push(totalOther);
-    }
-  
+  });
+  let categoryAry = Object.keys(obj);
+  let categoryChartData = [];
+  categoryAry.forEach(function (item) {
+    let ary = [];
+    ary.push(item);
+    ary.push(obj[item]);
+    categoryChartData.push(ary);
+  });
 
-    // C3.js
-    let chart = c3.generate({
-    bindto: '#chart', // HTML 元素綁定
+  //圖表:全產品類別營收比重
+  let categoryChart = c3.generate({
+    bindto: '#categoryChart',
     data: {
-        type: "pie",
-        columns: pieChartData,
-    },
-});
+      columns: categoryChartData,
+      type: "pie"
+    }
+  });
+};
 
+//圖表:全品項營收比重
+//篩選資料類別 做出資料關聯
+function renderAllItemChart(orderData) {
+  let obj = {};
+  orderData.forEach(function (item) {
+    item.products.forEach(function (productItem) {
+      if (obj[productItem.title] === undefined) {
+        obj[productItem.title] = productItem.price * productItem.quantity;
+      } else {
+        obj[productItem.title] += productItem.price * productItem.quantity;
+      }
+    });
+  });
+  console.log(obj);
+  let itemAry = Object.keys(obj);
+  let allItemChartData = [];
+  itemAry.forEach(function (item) {
+    let ary = [];
+    ary.push(item);
+    ary.push(obj[item]);
+    allItemChartData.push(ary);
+  });
+  allItemChartData.sort(function (a, b) {
+    return b[1] - a[1];
+  });
+  let otherTotal = ["其他"]
+  let otherTotalPrice = 0;
+  allItemChartData.forEach(function (item, index) {
+    if (index > 2) {
+      otherTotalPrice += item[1]
+    }
+  });
+  otherTotal.push(otherTotalPrice);
+  allItemChartData.splice(3, allItemChartData.length - 1);
+  allItemChartData.push(otherTotal)
+  console.log(allItemChartData);
 
+  //圖表:全品項營收比重
+  let allItemChart = c3.generate({
+    bindto: '#allItemChart',
+    data: {
+      columns: allItemChartData,
+      type: "pie"
+    }
+  });
 };

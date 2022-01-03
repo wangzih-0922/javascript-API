@@ -1,9 +1,9 @@
 //綁定DOM
 const productList = document.querySelector(".productWrap")
 const cartList = document.querySelector(".shoppingCart-tbody")
-
 let productData;
 let cartData;
+
 //資料初始化
 function init() {
   getProductList();
@@ -94,8 +94,7 @@ function renderCartList(data) {
 };
 
 
-//加入購物車(連接API)
-
+//加入購物車及產品數量邏輯
 productList.addEventListener("click", function (e) {
   e.preventDefault();
   let addCardBtn = document.querySelector(".addCardBtn")
@@ -113,13 +112,10 @@ productList.addEventListener("click", function (e) {
     addCartItem(productId, productTitle);
   } else {
     addProductNum(newAry[0].id, newAry[0].quantity + 1, productTitle);
-
   }
-
-
 });
 
-//加入購物車
+//加入購物車(連接API)
 function addCartItem(productId, productTitle) {
   axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${api_path}/carts`, {
     data: {
@@ -136,7 +132,7 @@ function addCartItem(productId, productTitle) {
     })
 };
 
-//增加商品數量
+//增加商品數量(連接API)
 function addProductNum(cardId, productQuantity, productTitle) {
   axios.patch(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${api_path}/carts`, {
     "data": {
@@ -196,7 +192,10 @@ const orderBtn = document.querySelector(".orderInfo-btn");
 orderBtn.addEventListener("click", function (e) {
   e.preventDefault();
   if (cartData.length === 0) {
-    swal("請至少加入一項商品至購物車");
+    swal({
+      title: "請至少加入一項商品至購物車!",
+      icon: "warning",
+    });
     return;
   }
   let name = document.querySelector("#customerName").value;
@@ -204,7 +203,21 @@ orderBtn.addEventListener("click", function (e) {
   let email = document.querySelector("#customerEmail").value;
   let address = document.querySelector("#customerAddress").value;
   let tradeWay = document.querySelector("#tradeWay").value;
+  if (name == "" || phone == "" || email == "" || address == "") {
+    swal({
+      title: "資料未完整!",
+      icon: "warning",
+    });
+    return;
+  }
 
+  if (!regex(/^[0-9]{10}$/, phone) || !regex(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, email)) {
+    swal({
+      title: "格式不正確!",
+      icon: "warning",
+    });
+    return;
+  }
   axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${api_path}/orders`,
     {
       "data": {
@@ -224,7 +237,8 @@ orderBtn.addEventListener("click", function (e) {
         title: "已成功送出訂單！",
         icon: "success"
       });
-
+      getCartList();
+      const form = document.querySelector(".orderInfo-form");
       form.reset();
     })
     .catch(function (error) {
@@ -242,3 +256,8 @@ function toThounsand(num) {
 }
 
 
+//驗證
+function regex(format, value) {
+  console.log(format.test(value));
+  return format.test(value);
+}
